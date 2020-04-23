@@ -523,7 +523,7 @@ OneDriveClient.prototype.getFile = function(id, success, error, denyConvert, asL
 					error({code: App.ERROR_TIMEOUT})
 				}), this.ui.timeout);
 				
-				this.ui.loadUrl(meta['@microsoft.graph.downloadUrl'], mxUtils.bind(this, function(data)
+				this.ui.editor.loadUrl(meta['@microsoft.graph.downloadUrl'], mxUtils.bind(this, function(data)
 				{
 					try
 					{
@@ -873,10 +873,13 @@ OneDriveClient.prototype.saveFile = function(file, success, error, etag)
 		
 		if (this.ui.useCanvasForExport && /(\.png)$/i.test(file.meta.name))
 		{
+			var p = this.ui.getPngFileProperties(this.ui.fileNode);
+			
 			this.ui.getEmbeddedPng(mxUtils.bind(this, function(data)
 			{
 				fn(this.ui.base64ToBlob(data, 'image/png'));
-			}), error, (this.ui.getCurrentFile() != file) ? savedData : null);
+			}), error, (this.ui.getCurrentFile() != file) ?
+				savedData : null, p.scale, p.border);
 		}
 		else
 		{
@@ -1206,7 +1209,8 @@ OneDriveClient.prototype.logout = function()
 			localStorage.removeItem('odpickerv7cache');	
 		}
 	}
-	
+
+	window.open('https://login.microsoftonline.com/common/oauth2/v2.0/logout', 'logout', 'width=525,height=525,status=no,resizable=yes,toolbar=no,menubar=no,scrollbars=yes');
 	this.clearPersistentToken();
 	this.setUser(null);
 	this.token = null;

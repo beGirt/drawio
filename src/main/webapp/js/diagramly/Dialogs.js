@@ -1956,69 +1956,6 @@ var BackgroundImageDialog = function(editorUi, applyFn)
 	{
 		btns.appendChild(cancelBtn);
 	}
-	
-	if (!editorUi.isOffline())
-	{
-		// Dialogs not allowed inside iframes
-		if (typeof(google) != 'undefined' && typeof(google.picker) != 'undefined' && window.self === window.top)
-		{
-			var searchBtn = mxUtils.button(mxResources.get('search'), function()
-			{
-				// Creates one picker and reuses it to avoid polluting the DOM
-				if (editorUi.imageSearchPicker == null)
-				{
-					var picker = new google.picker.PickerBuilder()
-						.setLocale(mxLanguage)
-						.addView(google.picker.ViewId.IMAGE_SEARCH)
-						.enableFeature(google.picker.Feature.NAV_HIDDEN);
-					
-					editorUi.imageSearchPicker = picker.setCallback(function(data)
-					{
-						ImageDialog.filePicked(data);
-				    }).build();
-				}
-				
-				editorUi.imageSearchPicker.setVisible(true);
-			});
-			
-			searchBtn.className = 'geBtn';
-			btns.appendChild(searchBtn);
-	
-			if (editorUi.drive != null && urlParams['photos'] == '1')
-			{
-				var gpBtn = mxUtils.button(mxResources.get('googlePlus'), function()
-				{
-					if (editorUi.spinner.spin(document.body, mxResources.get('authorizing')))
-					{
-						editorUi.drive.checkToken(mxUtils.bind(this, function()
-						{
-							editorUi.spinner.stop();
-							
-							// Creates one picker and reuses it to avoid polluting the DOM
-							if (editorUi.photoPicker == null)
-							{
-								var picker = new google.picker.PickerBuilder()
-									.setAppId(editorUi.drive.appId)	
-									.setLocale(mxLanguage)
-									.setOAuthToken(editorUi.drive.token)
-						            .addView(google.picker.ViewId.PHOTO_UPLOAD);
-								
-								editorUi.photoPicker = picker.setCallback(function(data)
-								{
-									ImageDialog.filePicked(data);
-							    }).build();
-							}
-							
-							editorUi.photoPicker.setVisible(true);
-						}));
-					}
-				});
-				
-				gpBtn.className = 'geBtn';
-				btns.appendChild(gpBtn);
-			}
-		}
-	}
 
 	var applyBtn = mxUtils.button(mxResources.get('apply'), function()
 	{
@@ -2147,7 +2084,7 @@ var ParseDialog = function(editorUi, title, defaultType)
 					}
 					
 					tableCell = new mxCell(name, new mxGeometry(dx, 0, 160, 26),
-						'swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#e0e0e0;horizontalStack=0;resizeParent=1;resizeLast=0;collapsible=1;marginBottom=0;swimlaneFillColor=#ffffff;align=center;');
+						'swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeLast=0;collapsible=1;marginBottom=0;align=center;');
 					tableCell.vertex = true;
 					cells.push(tableCell);
 					
@@ -2734,7 +2671,7 @@ var NewDialog = function(editorUi, compact, showName, callback, createOnly, canc
 	var nameInput = document.createElement('input');
 	nameInput.setAttribute('value', editorUi.defaultFilename + ext);
 	nameInput.style.marginLeft = '10px';
-	nameInput.style.width = (compact) ? '220px' : '430px';
+	nameInput.style.width = (compact) ? '144px' : '284px';
 	
 	this.init = function()
 	{
@@ -2752,15 +2689,24 @@ var NewDialog = function(editorUi, compact, showName, callback, createOnly, canc
 			}
 		}
 	};
-
+	
+	// Adds filetype dropdown
 	if (showName)
 	{
 		header.appendChild(nameInput);
+
+		if (editorUi.editor.diagramFileTypes != null)
+		{
+			var typeSelect = FilenameDialog.createFileTypes(editorUi, nameInput, editorUi.editor.diagramFileTypes);
+			typeSelect.style.marginLeft = '6px';
+			typeSelect.style.width = (compact) ? '80px' : '140px';
+			header.appendChild(typeSelect);
+		}
 		
 		if (editorUi.editor.fileExtensions != null)
 		{
-			var hint = FilenameDialog.createTypeHint(
-					editorUi, nameInput, editorUi.editor.fileExtensions);
+			var hint = FilenameDialog.createTypeHint(editorUi,
+				nameInput, editorUi.editor.fileExtensions);
 			hint.style.marginTop = '12px';
 			
 			header.appendChild(hint);
@@ -3600,11 +3546,11 @@ var CreateDialog = function(editorUi, title, createFn, cancelFn, dlgTitle, btnLa
 
 	var nameInput = document.createElement('input');
 	nameInput.setAttribute('value', title);
-	nameInput.style.width = '280px';
+	nameInput.style.width = '200px';
 	nameInput.style.marginLeft = '10px';
 	nameInput.style.marginBottom = '20px';
 	nameInput.style.maxWidth = '70%';
-		
+	
 	this.init = function()
 	{
 		nameInput.focus();
@@ -3623,6 +3569,14 @@ var CreateDialog = function(editorUi, title, createFn, cancelFn, dlgTitle, btnLa
 
 	if (hints != null)
 	{
+		if (editorUi.editor.diagramFileTypes != null)
+		{
+			var typeSelect = FilenameDialog.createFileTypes(editorUi, nameInput, editorUi.editor.diagramFileTypes);
+			typeSelect.style.marginLeft = '6px';
+			typeSelect.style.width = '80px';
+			div.appendChild(typeSelect);
+		}
+		
 		div.appendChild(FilenameDialog.createTypeHint(editorUi, nameInput, hints));
 	}
 	
@@ -4452,63 +4406,6 @@ var ImageDialog = function(editorUi, title, initialValue, fn, ignoreExisting, co
 		cropBtn.className = 'geBtn';
 		btns.appendChild(cropBtn);
 	}
-	
-	if (typeof(google) != 'undefined' && typeof(google.picker) != 'undefined' && window.self === window.top)
-	{
-		var searchBtn = mxUtils.button(mxResources.get('search'), function()
-		{
-			// Creates one picker and reuses it to avoid polluting the DOM
-			if (editorUi.imageSearchPicker == null)
-			{
-				var picker = new google.picker.PickerBuilder()
-					.setLocale(mxLanguage)
-					.addView(google.picker.ViewId.IMAGE_SEARCH)
-					.enableFeature(google.picker.Feature.NAV_HIDDEN);
-				
-				editorUi.imageSearchPicker = picker.setCallback(function(data)
-				{
-					ImageDialog.filePicked(data);
-			    }).build();
-			}
-			
-			editorUi.imageSearchPicker.setVisible(true);
-		});
-		searchBtn.className = 'geBtn';
-		btns.appendChild(searchBtn);
-
-		if (editorUi.drive != null && urlParams['photos'] == '1')
-		{
-			var gpBtn = mxUtils.button(mxResources.get('googlePlus'), function()
-			{
-				if (editorUi.spinner.spin(document.body, mxResources.get('authorizing')))
-				{
-					editorUi.drive.checkToken(mxUtils.bind(this, function()
-					{
-						editorUi.spinner.stop();
-						
-						// Creates one picker and reuses it to avoid polluting the DOM
-						if (editorUi.photoPicker == null)
-						{
-							var picker = new google.picker.PickerBuilder()
-								.setAppId(editorUi.drive.appId)	
-								.setLocale(mxLanguage)
-								.setOAuthToken(editorUi.drive.token)
-					            .addView(google.picker.ViewId.PHOTO_UPLOAD);
-							
-							editorUi.photoPicker = picker.setCallback(function(data)
-							{
-								ImageDialog.filePicked(data);
-						    }).build();
-						}
-						
-						editorUi.photoPicker.setVisible(true);
-					}));
-				}
-			});
-			gpBtn.className = 'geBtn';
-			btns.appendChild(gpBtn);
-		}
-	}
 
 	mxEvent.addListener(linkInput, 'keypress', function(e)
 	{
@@ -4897,16 +4794,8 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn, showPages)
 						    .addView(view)
 							.addView(view2)
 							.addView(view21)
-							.addView(google.picker.ViewId.RECENTLY_PICKED)
-				            .addView(google.picker.ViewId.IMAGE_SEARCH)
-				            .addView(google.picker.ViewId.VIDEO_SEARCH)
-				            .addView(google.picker.ViewId.MAPS);
-						
-						if (urlParams['photos'] == '1')
-						{
-							picker.addView(google.picker.ViewId.PHOTO_UPLOAD)
-						}
-						
+							.addView(google.picker.ViewId.RECENTLY_PICKED);
+
 						editorUi.linkPicker = picker.setCallback(function(data)
 						{
 							LinkDialog.filePicked(data);
@@ -5024,19 +4913,20 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn, showPages)
 /**
  * Constructs a new about dialog
  */
-var FeedbackDialog = function(editorUi)
+var FeedbackDialog = function(editorUi, subject, emailOptional, diagramData)
 {
 	var div = document.createElement('div');
 	
 	var label = document.createElement('div');
-	mxUtils.write(label, mxResources.get('sendYourFeedbackToDrawIo'));
+	mxUtils.write(label, mxResources.get('sendYourFeedback'));
 	label.style.fontSize = '18px';
 	label.style.marginBottom = '18px';
 	
 	div.appendChild(label);
 	
 	label = document.createElement('div');
-	mxUtils.write(label, mxResources.get('yourEmailAddress') + ' (' + mxResources.get('required') + ')');
+	mxUtils.write(label, mxResources.get('yourEmailAddress') +
+		((emailOptional) ? '' : ' (' + mxResources.get('required') + ')'));
 	
 	div.appendChild(label);
 	
@@ -5048,8 +4938,12 @@ var FeedbackDialog = function(editorUi)
 	var sendButton = mxUtils.button(mxResources.get('sendMessage'), function()
 	{
 		var diagram = textarea.value +
-			((cb.checked) ? '\nDiagram:\n' + mxUtils.getXml(editorUi.getXmlFileData()) : '') +
-			'\nBrowser:\n' + navigator.userAgent;
+			((cb.checked) ? '\nDiagram:\n' + ((diagramData != null) ?
+			diagramData : mxUtils.getXml(editorUi.getXmlFileData())) : '') +
+			'\nuserAgent:\n' + navigator.userAgent +
+			'\nappVersion:\n' + navigator.appVersion +
+			'\nappName:\n' + navigator.appName +
+			'\nplatform:\n' + navigator.platform;
 		
 		if (diagram.length > FeedbackDialog.maxAttachmentSize)
 		{
@@ -5065,7 +4959,8 @@ var FeedbackDialog = function(editorUi)
 				mxUtils.post(postUrl, 'email=' + encodeURIComponent(email.value) +
 						'&version=' + encodeURIComponent(EditorUi.VERSION) +
 						'&url=' + encodeURIComponent(window.location.href) +
-						'&body=' + encodeURIComponent('Feedback:\n' + diagram),
+						'&body=' + encodeURIComponent(((subject != null) ?
+							subject : 'Feedback') + ':\n' + diagram),
 					function(req)
 					{
 						editorUi.spinner.stop();
@@ -5089,33 +4984,37 @@ var FeedbackDialog = function(editorUi)
 	});
 	sendButton.className = 'geBtn gePrimaryBtn';
 	
-	sendButton.setAttribute('disabled', 'disabled');
-	var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-	
-	mxEvent.addListener(email, 'change', function()
+	if (!emailOptional)
 	{
-		if (email.value.length > 0 && re.test(email.value) > 0)
+		sendButton.setAttribute('disabled', 'disabled');
+
+		var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+		
+		mxEvent.addListener(email, 'change', function()
 		{
-			sendButton.removeAttribute('disabled');
-		}
-		else
+			if (email.value.length > 0 && re.test(email.value) > 0)
+			{
+				sendButton.removeAttribute('disabled');
+			}
+			else
+			{
+				sendButton.setAttribute('disabled', 'disabled');
+			}
+		});
+		
+		mxEvent.addListener(email, 'keyup', function()
 		{
-			sendButton.setAttribute('disabled', 'disabled');
-		}
-	});
-	
-	mxEvent.addListener(email, 'keyup', function()
-	{
-		if (email.value.length > 0 && re.test(email.value))
-		{
-			sendButton.removeAttribute('disabled');
-		}
-		else
-		{
-			sendButton.setAttribute('disabled', 'disabled');
-		}
-	});
-	
+			if (email.value.length > 0 && re.test(email.value))
+			{
+				sendButton.removeAttribute('disabled');
+			}
+			else
+			{
+				sendButton.setAttribute('disabled', 'disabled');
+			}
+		});
+	}
+		
 	div.appendChild(email);
 	
 	this.init = function()
@@ -6100,7 +5999,7 @@ var DraftDialog = function(editorUi, title, xml, editFn, discardFn, editLabel, d
 				
 				if (bg == null || bg == '' || bg == mxConstants.NONE)
 				{
-					bg = '#ffffff';
+					bg = (uiTheme == 'dark') ? 'transparent' : '#ffffff';
 				}
 				
 				container.style.backgroundColor = bg;
@@ -6239,6 +6138,7 @@ var FindWindow = function(ui, x, y, w, h)
 	var graph = ui.editor.graph;
 	var lastSearch = null;
 	var lastFound = null;
+	var allChecked = false;
 
 	var div = document.createElement('div');
 	div.style.userSelect = 'none';
@@ -6259,18 +6159,37 @@ var FindWindow = function(ui, x, y, w, h)
 	mxUtils.br(div);
 	
 	var regexInput = document.createElement('input');
+	regexInput.setAttribute('id', 'geFindWinRegExChck');
 	regexInput.setAttribute('type', 'checkbox');
 	regexInput.style.marginRight = '4px';
 	div.appendChild(regexInput);
 	
-	mxUtils.write(div, mxResources.get('regularExpression'));
-
+	var regexLabel = document.createElement('label');
+	regexLabel.setAttribute('for', 'geFindWinRegExChck');
+	div.appendChild(regexLabel);
+	mxUtils.write(regexLabel, mxResources.get('regularExpression'));
+	div.appendChild(regexLabel);
+	
     var help = ui.menus.createHelpLink('https://desk.draw.io/support/solutions/articles/16000088250');
     help.style.position = 'relative';
     help.style.marginLeft = '6px';
     help.style.top = '-1px';
     div.appendChild(help);
+    
+	mxUtils.br(div);
 
+    var allPagesInput = document.createElement('input');
+    allPagesInput.setAttribute('id', 'geFindWinAllPagesChck');
+    allPagesInput.setAttribute('type', 'checkbox');
+    allPagesInput.style.marginRight = '4px';
+	div.appendChild(allPagesInput);
+	
+	var allPagesLabel = document.createElement('label');
+	allPagesLabel.setAttribute('for', 'geFindWinAllPagesChck');
+	div.appendChild(allPagesLabel);
+	mxUtils.write(allPagesLabel, mxResources.get('allPages'));
+	div.appendChild(allPagesLabel);
+    
 	var tmp = document.createElement('div');
 	
 	function testMeta(re, cell, search)
@@ -6297,24 +6216,69 @@ var FindWindow = function(ui, x, y, w, h)
 		return false;
 	};
 	
-	function search()
+	function search(internalCall)
 	{
 		var cells = graph.model.getDescendants(graph.model.getRoot());
-		var search = searchInput.value.toLowerCase();
-		var re = (regexInput.checked) ? new RegExp(search) : null;
+		var searchStr = searchInput.value.toLowerCase();
+		var re = (regexInput.checked) ? new RegExp(searchStr) : null;
 		var firstMatch = null;
 		
-		if (lastSearch != search)
+		if (lastSearch != searchStr)
 		{
-			lastSearch = search;
+			lastSearch = searchStr;
 			lastFound = null;
+			allChecked = false;
 		}
 
 		var active = lastFound == null;
 		
-		if (search.length > 0)
+		if (searchStr.length > 0)
 		{
-			for (var i = 0; i < cells.length; i++)
+			if (allChecked)
+			{
+				allChecked = false;
+				
+				//Find current page index
+				var currentPageIndex;
+				
+				for (var i = 0; i < ui.pages.length; i++)
+				{
+					if (ui.currentPage == ui.pages[i])
+					{
+						currentPageIndex = i;
+						break;
+					}
+				}
+				
+				var nextPageIndex = (currentPageIndex + 1) % ui.pages.length, nextPage;
+				lastFound = null;
+				
+				do
+				{
+					allChecked = false;
+					nextPage = ui.pages[nextPageIndex];
+					graph = ui.createTemporaryGraph(graph.getStylesheet());
+					ui.updatePageRoot(nextPage);
+					graph.model.setRoot(nextPage.root);
+					nextPageIndex = (nextPageIndex + 1) % ui.pages.length;
+				}
+				while(!search(true) && nextPageIndex != currentPageIndex);
+				
+				if (lastFound)
+				{
+					lastFound = null;
+					ui.selectPage(nextPage);
+				}
+				
+				allChecked = false;
+				graph = ui.editor.graph;
+				
+				return search(true);
+			}
+			
+			var i;
+			
+			for (i = 0; i < cells.length; i++)
 			{
 				var state = graph.view.getState(cells[i]);
 				
@@ -6333,8 +6297,8 @@ var FindWindow = function(ui, x, y, w, h)
 		
 					label = mxUtils.trim(label.replace(/[\x00-\x1F\x7F-\x9F]|\s+/g, ' ')).toLowerCase();
 					
-					if ((re == null && (label.substring(0, search.length) === search || testMeta(re, state.cell, search))) ||
-						(re != null && (re.test(label) || testMeta(re, state.cell, search))))
+					if ((re == null && (label.substring(0, searchStr.length) === searchStr || testMeta(re, state.cell, searchStr))) ||
+						(re != null && (re.test(label) || testMeta(re, state.cell, searchStr))))
 					{
 						if (active)
 						{
@@ -6355,6 +6319,13 @@ var FindWindow = function(ui, x, y, w, h)
 					
 		if (firstMatch != null)
 		{
+			if (i == cells.length && allPagesInput.checked)
+			{
+				lastFound = null;
+				allChecked = true;
+				return search(true);
+			}
+			
 			lastFound = firstMatch;
 			graph.scrollCellToVisible(lastFound.cell);
 			
@@ -6367,12 +6338,18 @@ var FindWindow = function(ui, x, y, w, h)
 				graph.highlightCell(lastFound.cell);
 			}
 		}
+		//Check other pages
+		else if (!internalCall && allPagesInput.checked)
+		{
+			allChecked = true;
+			return search(true);
+		}
 		else if (graph.isEnabled())
 		{
 			graph.clearSelection();
 		}
 		
-		return search.length == 0 || firstMatch != null;
+		return searchStr.length == 0 || firstMatch != null;
 	};
 
 	mxUtils.br(div);
@@ -6383,12 +6360,14 @@ var FindWindow = function(ui, x, y, w, h)
 		searchInput.style.backgroundColor = '';
 		lastFound = null;
 		lastSearch = null;
+		allChecked = false;
 		searchInput.focus();
 	});
 	
 	resetBtn.setAttribute('title', mxResources.get('reset'));
 	resetBtn.style.marginTop = '6px';
 	resetBtn.style.marginRight = '4px';
+	resetBtn.style.marginLeft = ((w - 20 - 2 * 78) / 2) + 'px'; // 20 are window padding, and 78 is btn width
 	resetBtn.className = 'geBtn';
 	
 	div.appendChild(resetBtn);
@@ -6466,6 +6445,16 @@ var FindWindow = function(ui, x, y, w, h)
 			else
 			{
 				document.execCommand('selectAll', false, null);
+			}
+			
+			if (ui.pages != null && ui.pages.length > 1)
+			{
+				allPagesInput.removeAttribute('disabled');
+			}
+			else
+			{
+				allPagesInput.checked = false;
+				allPagesInput.setAttribute('disabled', 'disabled');
 			}
 		}
 		else
@@ -10465,4 +10454,184 @@ AspectDialog.prototype.createLayerItem = function(layer, pageId, graph, pageNode
 	{
 		onClick();
 	}
+};
+
+/**
+ * Constructs a new page setup dialog.
+ */
+var FilePropertiesDialog = function(editorUi)
+{	
+	var row, td;
+	var table = document.createElement('table');
+	var tbody = document.createElement('tbody');
+	table.style.width = '100%';
+	table.style.marginTop = '8px';
+	
+	var file = editorUi.getCurrentFile();
+	var filename = (file != null && file.getTitle() != null) ?
+		file.getTitle() : this.editorUi.defaultFilename;
+	var isPng = /(\.png)$/i.test(filename);
+	var apply = null;
+
+	if (isPng)
+	{
+		var scale = 1;
+		var border = 0;
+		var node = editorUi.fileNode;
+	
+		if (node != null)
+		{
+			if (node.hasAttribute('scale'))
+			{
+				scale = parseFloat(node.getAttribute('scale'));
+			}
+			
+			if (node.hasAttribute('border'))
+			{
+				border = parseInt(node.getAttribute('border'));
+			}
+		}
+		
+		row = document.createElement('tr');
+		td = document.createElement('td');
+		td.style.whiteSpace = 'nowrap';
+		td.style.fontSize = '10pt';
+		td.style.width = '120px';
+		mxUtils.write(td, mxResources.get('zoom') + ':');
+		
+		row.appendChild(td);
+	
+		var zoomInput = document.createElement('input');
+		zoomInput.setAttribute('value', (scale * 100) + '%');
+		zoomInput.style.marginLeft = '4px';
+		zoomInput.style.width ='180px';
+		
+		td = document.createElement('td');
+		td.style.whiteSpace = 'nowrap';
+		td.appendChild(zoomInput);
+		row.appendChild(td);
+		tbody.appendChild(row);
+		
+		row = document.createElement('tr');
+		td = document.createElement('td');
+		td.style.whiteSpace = 'nowrap';
+		td.style.fontSize = '10pt';
+		td.style.width = '120px';
+		mxUtils.write(td, mxResources.get('borderWidth') + ':');
+		
+		row.appendChild(td);
+	
+		var borderInput = document.createElement('input');
+		borderInput.setAttribute('value', border);
+		borderInput.style.marginLeft = '4px';
+		borderInput.style.width ='180px';
+		
+		td = document.createElement('td');
+		td.style.whiteSpace = 'nowrap';
+		td.appendChild(borderInput);
+		row.appendChild(td);
+		tbody.appendChild(row);
+		
+		this.init = function()
+		{
+			zoomInput.focus();
+			
+			if (mxClient.IS_GC || mxClient.IS_FF || document.documentMode >= 5 || mxClient.IS_QUIRKS)
+			{
+				zoomInput.select();
+			}
+			else
+			{
+				document.execCommand('selectAll', false, null);
+			}
+		};
+		
+		apply = function()
+		{
+			if (editorUi.fileNode != null)
+			{
+				editorUi.fileNode.setAttribute('scale', Math.max(0, parseInt(zoomInput.value) / 100));
+				editorUi.fileNode.setAttribute('border', Math.max(0, parseInt(borderInput.value)));
+			}
+			
+			editorUi.hideDialog();
+		};
+	}
+	else
+	{
+		var compressed = (file != null) ? file.isCompressed() : Editor.compressXml;
+
+		row = document.createElement('tr');
+		td = document.createElement('td');
+		td.style.whiteSpace = 'nowrap';
+		td.style.fontSize = '10pt';
+		td.style.width = '120px';
+		mxUtils.write(td, mxResources.get('compressed') + ':');
+		
+		row.appendChild(td);
+	
+		var compressedInput = document.createElement('input');
+		compressedInput.setAttribute('type', 'checkbox');
+		
+		if (compressed)
+		{
+			compressedInput.setAttribute('checked', 'checked');
+			compressedInput.defaultChecked = true;
+		}
+
+		td = document.createElement('td');
+		td.style.whiteSpace = 'nowrap';
+		td.appendChild(compressedInput);
+		row.appendChild(td);
+		tbody.appendChild(row);
+		
+		this.init = function()
+		{
+			compressedInput.focus();
+		};
+		
+		apply = function()
+		{
+			if (editorUi.fileNode != null)
+			{
+				editorUi.fileNode.setAttribute('compressed', (compressedInput.checked) ? 'true' : 'false');
+			}
+			
+			editorUi.hideDialog();
+		};
+	}
+	
+	var genericBtn = mxUtils.button(mxResources.get('apply'), apply);
+	genericBtn.className = 'geBtn gePrimaryBtn';
+	
+	row = document.createElement('tr');
+	td = document.createElement('td');
+	td.colSpan = 2;
+	td.style.paddingTop = '20px';
+	td.style.whiteSpace = 'nowrap';
+	td.setAttribute('align', 'right');
+	
+	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
+	{
+		editorUi.hideDialog();
+	});
+	cancelBtn.className = 'geBtn';
+	
+	if (editorUi.editor.cancelFirst)
+	{
+		td.appendChild(cancelBtn);
+	}
+
+	td.appendChild(genericBtn);
+	
+	if (!editorUi.editor.cancelFirst)
+	{
+		td.appendChild(cancelBtn);
+	}
+
+	row.appendChild(td);
+	tbody.appendChild(row);
+	table.appendChild(tbody);
+	
+	this.container = table;
 };

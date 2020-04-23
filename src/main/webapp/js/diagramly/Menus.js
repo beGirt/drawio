@@ -61,15 +61,14 @@
 		var graph = editorUi.editor.graph;
 		var isGraphEnabled = mxUtils.bind(graph, graph.isEnabled);
 		var googleEnabled = ((urlParams['embed'] != '1' && urlParams['gapi'] != '0') ||
-				(urlParams['embed'] == '1' && urlParams['gapi'] == '1')) && mxClient.IS_SVG &&
-				isLocalStorage && (document.documentMode == null || document.documentMode >= 10);
+			(urlParams['embed'] == '1' && urlParams['gapi'] == '1')) && mxClient.IS_SVG &&
+			isLocalStorage && (document.documentMode == null || document.documentMode >= 10);
 		var dropboxEnabled = ((urlParams['embed'] != '1' && urlParams['db'] != '0') || (urlParams['embed'] == '1' && urlParams['db'] == '1')) &&
 			mxClient.IS_SVG && (document.documentMode == null || document.documentMode > 9);
 		var oneDriveEnabled = (window.location.hostname == 'www.draw.io' || window.location.hostname == 'test.draw.io' ||
-				window.location.hostname == 'drive.draw.io') &&
-				(((urlParams['embed'] != '1' && urlParams['od'] != '0') || (urlParams['embed'] == '1' &&
-				urlParams['od'] == '1')) && !navigator.userAgent.match(/(iPad|iPhone|iPod)/g) &&
-				(navigator.userAgent.indexOf('MSIE') < 0 || document.documentMode >= 10));
+			window.location.hostname == 'drive.draw.io' || window.location.hostname == 'app.diagrams.net') &&
+			(((urlParams['embed'] != '1' && urlParams['od'] != '0') || (urlParams['embed'] == '1' && urlParams['od'] == '1')) &&
+			!mxClient.IS_IOS && (navigator.userAgent.indexOf('MSIE') < 0 || document.documentMode >= 10));
 		var trelloEnabled = ((urlParams['embed'] != '1' && urlParams['tr'] != '0') || (urlParams['embed'] == '1' && urlParams['tr'] == '1')) &&
 			mxClient.IS_SVG && (document.documentMode == null || document.documentMode > 9);
 
@@ -182,6 +181,13 @@
 		rulerAction.setToggleAction(true);
 		rulerAction.setSelectedCallback(function() { return editorUi.ruler != null; });
 
+		editorUi.actions.addAction('properties...', function()
+		{
+			var dlg = new FilePropertiesDialog(editorUi);
+			editorUi.showDialog(dlg.container, 320, 120, true, true);
+			dlg.init();
+		}).isEnabled = isGraphEnabled;
+	
 		if (window.mxFreehand)
 		{
 			editorUi.actions.put('insertFreehand', new Action(mxResources.get('freehand') + '...', function(evt)
@@ -287,8 +293,7 @@
 		
 		editorUi.actions.put('exportPdf', new Action(mxResources.get('formatPdf') + '...', function()
 		{
-			if ((typeof(mxIsElectron) === 'undefined' || !mxIsElectron) &&
-				(editorUi.isOffline() || editorUi.printPdfExport))
+			if (!EditorUi.isElectronApp && (editorUi.isOffline() || editorUi.printPdfExport))
 			{
 				// Export PDF action for chrome OS (same as print with different dialog title)
 				editorUi.showDialog(new PrintDialog(editorUi, mxResources.get('formatPdf')).container, 360,
@@ -714,9 +719,9 @@
 		
 		editorUi.actions.put('about', new Action(mxResources.get('about') + ' ' + EditorUi.VERSION + '...', function()
 		{
-			if (editorUi.isOffline())
+			if (editorUi.isOffline() || mxClient.IS_CHROMEAPP || EditorUi.isElectronApp)
 			{
-				editorUi.alert('diagrams.net ' + EditorUi.VERSION);
+				editorUi.alert(editorUi.editor.appName + ' ' + EditorUi.VERSION);
 			}
 			else
 			{
@@ -731,7 +736,7 @@
 
 		editorUi.actions.addAction('support...', function()
 		{
-			editorUi.openLink('https://about.draw.io/support/');
+			editorUi.openLink('https://github.com/jgraph/drawio/wiki/Getting-Support');
 		});
 
 		editorUi.actions.addAction('exportOptionsDisabled...', function()
@@ -796,7 +801,7 @@
 		{
 			if (this.findWindow == null)
 			{
-				this.findWindow = new FindWindow(editorUi, document.body.offsetWidth - 300, 110, 240, 140);
+				this.findWindow = new FindWindow(editorUi, document.body.offsetWidth - 300, 110, 240, 155);
 				this.findWindow.window.addListener('show', function()
 				{
 					editorUi.fireEvent(new mxEventObject('find'));
@@ -823,12 +828,12 @@
 		
 		if (isLocalStorage && localStorage != null && urlParams['embed'] != '1')
 		{
-			editorUi.actions.addAction('drawConfig...', function()
+			editorUi.actions.addAction('configuration...', function()
 			{
 				// Add help, link button
 				var value = localStorage.getItem('.configuration');
 				
-		    	var dlg = new TextareaDialog(editorUi, mxResources.get('drawConfig') + ':',
+		    	var dlg = new TextareaDialog(editorUi, mxResources.get('configuration') + ':',
 		    		(value != null) ? JSON.stringify(JSON.parse(value), null, 2) : '', function(newValue)
 				{
 					if (newValue != null)
@@ -1285,19 +1290,8 @@
 					input.focus();
 				}, 0);
 				
-				this.addMenuItems(menu, ['-', 'keyboardShortcuts', 'quickStart', 'userManual', '-'], parent);
-				
-				if (!EditorUi.isElectronApp && !navigator.standalone && urlParams['embed'] != '1')	
-				{	
-					this.addMenuItems(menu, ['downloadDesktop'], parent);	
-				}
-				
-				if (!mxClient.IS_CHROMEAPP)
-				{
-					this.addMenuItems(menu, ['feedback', 'support'], parent);
-				}
-
-				this.addMenuItems(menu, ['-', 'about'], parent);
+				this.addMenuItems(menu, ['-', 'keyboardShortcuts', 'quickStart',
+					'-', 'userManual', 'support', '-', 'about'], parent);
 			}
 			
 			if (urlParams['test'] == '1')
@@ -2211,7 +2205,7 @@
 							// Imports SVG as images
 							if (/\.svg$/i.test(file.getTitle()) && !editorUi.editor.isDataSvg(file.getData()))
 							{
-								file.setData(editorUi.createSvgDataUri(file.getData()));
+								file.setData(Editor.createSvgDataUri(file.getData()));
 								mime = 'image/svg+xml';
 							}
 							
@@ -2335,7 +2329,7 @@
 							var mime = (/(\.png)($|\?)/i.test(fileUrl)) ? 'image/png' : 'text/xml';
 							
 							// Uses proxy to avoid CORS issues
-							editorUi.loadUrl(PROXY_URL + '?url=' + encodeURIComponent(fileUrl), function(data)
+							editorUi.editor.loadUrl(PROXY_URL + '?url=' + encodeURIComponent(fileUrl), function(data)
 							{
 								doImportFile(data, mime, fileUrl);
 							},
@@ -2676,6 +2670,15 @@
     		{
     	        graph.startEditing(cell);
     		}
+    		
+    		// Async call is workaroun for touch events resetting hover icons
+    		window.setTimeout(function()
+    		{
+	    		if (editorUi.hoverIcons != null)
+				{
+					editorUi.hoverIcons.update(graph.view.getState(cell));
+				}
+    		}, 0);
     		
 	    	return cell;
 		};
@@ -3213,7 +3216,7 @@
 		{
 			this.addMenuItems(menu, ['undo', 'redo', '-', 'cut', 'copy']);
 			
-			if (mxIsElectron)
+			if (EditorUi.isElectronApp)
 			{
 				this.addMenuItems(menu, ['copyAsImage']);
 			}
@@ -3352,7 +3355,7 @@
 				this.addMenuItem(menu, 'plugins', parent);
 			}
 
-			this.addMenuItems(menu, ['tags', '-', 'editDiagram', '-', 'drawConfig'], parent);
+			this.addMenuItems(menu, ['tags', '-', 'editDiagram', '-', 'configuration'], parent);
 			
 			// Adds trailing separator in case new plugin entries are added
 			menu.addSeparator(parent);
@@ -3527,6 +3530,18 @@
 					this.addMenuItems(menu, ['-', 'revisionHistory'], parent);
 				}
 				
+				if (file != null && editorUi.fileNode != null)
+				{
+					var filename = (file.getTitle() != null) ?
+						file.getTitle() : editorUi.defaultFilename;
+					
+					if (!/(\.html)$/i.test(filename) &&
+						!/(\.svg)$/i.test(filename))
+					{
+						this.addMenuItems(menu, ['-', 'properties']);
+					}
+				}
+				
 				this.addMenuItems(menu, ['-', 'pageSetup'], parent);
 				
 				// Cannot use print in standalone mode on iOS as we cannot open new windows
@@ -3534,7 +3549,7 @@
 				{
 					this.addMenuItems(menu, ['print'], parent);
 				}
-				
+
 				this.addMenuItems(menu, ['-', 'close']);
 			}
 		})));
@@ -3557,8 +3572,6 @@
 		ChangeExtFonts.prototype.execute = function()
 		{
 			var graph = this.ui.editor.graph;
-			
-			
 			this.customFonts = this.prevCustomFonts;
 			this.prevCustomFonts = this.ui.menus.customFonts;
 			this.ui.fireEvent(new mxEventObject('customFontsChanged', 'customFonts', this.customFonts));
